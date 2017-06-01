@@ -110,7 +110,7 @@ lws_event_initloop(struct lws_context *context, struct event_base *loop,
       vh->lserv_wsi->w_read.event_watcher = event_new(
           loop,
           vh->lserv_wsi->desc.sockfd,
-          (EV_READ | EV_PERSIST),
+          (EV_READ | EV_WRITE | EV_PERSIST),
           lws_event_cb,
           &vh->lserv_wsi->w_read);
       event_add(vh->lserv_wsi->w_read.event_watcher, NULL);
