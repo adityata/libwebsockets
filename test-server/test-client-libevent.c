@@ -43,6 +43,7 @@ static struct lws *wsi_multi[3];
 static volatile int force_exit;
 static unsigned int opts, rl_multi[3];
 static int flag_no_mirror_traffic;
+static struct event_base *loop;
 
 #if defined(LWS_OPENSSL_SUPPORT) && defined(LWS_HAVE_SSL_CTX_set1_param)
 char crl_path[1024] = "";
@@ -123,6 +124,7 @@ callback_dumb_increment(struct lws *wsi, enum lws_callback_reasons reason,
 		if (wsi == wsi_mirror) {
 			which = "mirror";
 			wsi_mirror = NULL;
+			event_base_loopbreak(loop);
 		}
 
 		for (n = 0; n < ARRAY_SIZE(wsi_multi); n++)
@@ -294,11 +296,10 @@ callback_lws_mirror(struct lws *wsi, enum lws_callback_reasons reason,
 	case LWS_CALLBACK_CLOSED:
 		lwsl_notice("mirror: LWS_CALLBACK_CLOSED mirror_lifetime=%d\n", mirror_lifetime);
 		wsi_mirror = NULL;
+    event_base_loopbreak(loop);
 		break;
 
 	case LWS_CALLBACK_CLIENT_WRITEABLE:
-		lwsl_notice("mirror: LWS_CALLBACK_CLIENT_ESTABLISHED\n");
-    exit(0);
 		if (flag_no_mirror_traffic)
 			return 0;
 		for (n = 0; n < 1; n++) {
@@ -407,6 +408,7 @@ static const struct lws_extension exts[] = {
 void sighandler(int sig)
 {
 	force_exit = 1;
+  event_base_loopbreak(loop);
 }
 
 static struct option options[] = {
@@ -445,8 +447,21 @@ static int ratelimit_connects(unsigned int *last, unsigned int secs)
 	return 1;
 }
 
+void signal_cb(evutil_socket_t sock_fd, short events, void *ctx)
+{
+	struct event_base *event_base_loop = ctx;
+
+	lwsl_notice("Signal caught, exiting...\n");
+	force_exit = 1;
+	if (events & EV_SIGNAL)
+		event_base_loopbreak(event_base_loop);
+}
+
 int main(int argc, char **argv)
 {
+	loop = event_base_new();
+	int sigs[] = { SIGINT, SIGKILL, SIGTERM, SIGSEGV, SIGFPE };
+	struct event *signals[ARRAY_SIZE(sigs)];
 	int n = 0, m, ret = 0, port = 7681, use_ssl = 0, ietf_version = -1;
 	unsigned int rl_dumb = 0, rl_mirror = 0, do_ws = 1, pp_secs = 0, do_multi = 0;
 	struct lws_context_creation_info info;
@@ -459,6 +474,11 @@ int main(int argc, char **argv)
 	char ca_path[1024] = "";
 
 	memset(&info, 0, sizeof info);
+
+	for (n = 0; n < ARRAY_SIZE(sigs); n++) {
+		signals[n] = evsignal_new(loop, sigs[n], signal_cb, loop);
+		evsignal_add(signals[n], NULL);
+	}
 
 	lwsl_notice("libwebsockets test client - license LGPL2.1+SLE\n");
 	lwsl_notice("(C) Copyright 2010-2016 Andy Green <andy@warmcat.com>\n");
@@ -649,6 +669,8 @@ int main(int argc, char **argv)
 	 * instantiates the connection logically, lws_service() progresses it
 	 * asynchronously.
 	 */
+	// Don't use the default Signal Event Watcher & Handler
+	lws_event_sigint_cfg(context, 0, NULL);
 
 	m = 0;
 	while (!force_exit) {
@@ -665,7 +687,6 @@ int main(int argc, char **argv)
 		} else {
 
 			if (do_ws) {
-
 				if (!wsi_mirror && ratelimit_connects(&rl_mirror, 2u)) {
 					lwsl_notice("mirror: connecting\n");
 					i.protocol = protocols[PROTOCOL_LWS_MIRROR].name;
@@ -680,7 +701,8 @@ int main(int argc, char **argv)
 				}
 		}
 
-		lws_service(context, 500);
+    lws_event_initloop(context, loop, 0);
+		event_base_dispatch(loop);
 
 		if (do_multi) {
 			m++;

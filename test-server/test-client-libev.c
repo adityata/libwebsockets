@@ -297,8 +297,6 @@ callback_lws_mirror(struct lws *wsi, enum lws_callback_reasons reason,
 		break;
 
 	case LWS_CALLBACK_CLIENT_WRITEABLE:
-		lwsl_notice("mirror: LWS_CALLBACK_CLIENT_ESTABLISHED\n");
-    exit(0);
 		if (flag_no_mirror_traffic)
 			return 0;
 		for (n = 0; n < 1; n++) {
@@ -665,6 +663,12 @@ int main(int argc, char **argv)
 		} else {
 
 			if (do_ws) {
+				if (!wsi_dumb && ratelimit_connects(&rl_dumb, 2u)) {
+					lwsl_notice("dumb: connecting\n");
+					i.protocol = protocols[PROTOCOL_DUMB_INCREMENT].name;
+					i.pwsi = &wsi_dumb;
+					lws_client_connect_via_info(&i);
+				}
 
 				if (!wsi_mirror && ratelimit_connects(&rl_mirror, 2u)) {
 					lwsl_notice("mirror: connecting\n");

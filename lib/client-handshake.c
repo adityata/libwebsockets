@@ -306,6 +306,7 @@ lws_client_connect_2(struct lws *wsi)
 				cce = "socket connect failed";
 				goto failed;
 			}
+			lwsl_client("!!!!!!! lws_plat_check_connection_error succeeded\n");
 
 			/*
 			 * must do specifically a POLLOUT poll to hear
@@ -315,6 +316,7 @@ lws_client_connect_2(struct lws *wsi)
 				cce = "POLLOUT set failed";
 				goto failed;
 			}
+			lwsl_client("!!!!!!! lws_change_pollfd succeeded\n");
 
 			return wsi;
 		}
@@ -1041,7 +1043,7 @@ void socks_generate_msg(struct lws *wsi, enum socks_msg_type type,
 		/* the length of the address, excluding port */
 		pt->serv_buf[n] = strlen(wsi->u.hdr.stash->address);
 		break;
-		
+
 	default:
 		return;
 	}

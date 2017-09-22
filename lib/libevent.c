@@ -32,22 +32,13 @@ void lws_feature_status_libevent(struct lws_context_creation_info *info)
 static void
 lws_event_cb(evutil_socket_t sock_fd, short revents, void *ctx)
 {
+  lwsl_notice("lws_event_cb: %d , %d\n", sock_fd, revents);
   struct lws_io_watcher *lws_io = (struct lws_io_watcher *)ctx;
   struct lws_context *context = lws_io->context;
   struct lws_pollfd eventfd;
 
   if (revents & EV_TIMEOUT)
     return;
-
-  /* !!! EV_CLOSED doesn't exist in libevent2 */
-#if LIBEVENT_VERSION_NUMBER < 0x02000000
-  if (revents & EV_CLOSED)
-  {
-    event_del(lws_io->event_watcher);
-    event_free(lws_io->event_watcher);
-    return;
-  }
-#endif
 
   eventfd.fd = sock_fd;
   eventfd.events = 0;
@@ -111,12 +102,20 @@ lws_event_initloop(struct lws_context *context, struct event_base *loop,
     {
       vh->lserv_wsi->w_read.context = context;
       vh->lserv_wsi->w_read.event_watcher = event_new(
-          loop,
+          context->pt[tsi].io_loop_event_base,
           vh->lserv_wsi->desc.sockfd,
           (EV_READ | EV_PERSIST),
           lws_event_cb,
           &vh->lserv_wsi->w_read);
       event_add(vh->lserv_wsi->w_read.event_watcher, NULL);
+      vh->lserv_wsi->w_write.context = context;
+      vh->lserv_wsi->w_write.event_watcher = event_new(
+          context->pt[tsi].io_loop_event_base,
+          vh->lserv_wsi->desc.sockfd,
+          (EV_WRITE | EV_PERSIST),
+          lws_event_cb,
+          &vh->lserv_wsi->w_write);
+      event_add(vh->lserv_wsi->w_write.event_watcher, NULL);
     }
     vh = vh->vhost_next;
   }
@@ -124,8 +123,8 @@ lws_event_initloop(struct lws_context *context, struct event_base *loop,
   /* Register the signal watcher unless the user says not to */
   if (context->use_ev_sigint)
   {
-    struct event *w_sigint = evsignal_new(loop, SIGINT,
-        context->lws_event_sigint_cb, &context->pt[tsi]);
+    struct event *w_sigint = evsignal_new(context->pt[tsi].io_loop_event_base,
+        SIGINT, context->lws_event_sigint_cb, &context->pt[tsi]);
     context->pt[tsi].w_sigint.event_watcher = w_sigint;
     event_add(w_sigint, NULL);
   }
@@ -153,6 +152,8 @@ lws_libevent_destroyloop(struct lws_context *context, int tsi)
     {
       event_free(vh->lserv_wsi->w_read.event_watcher);
       vh->lserv_wsi->w_read.event_watcher = NULL;
+      event_free(vh->lserv_wsi->w_write.event_watcher);
+      vh->lserv_wsi->w_write.event_watcher = NULL;
     }
     vh = vh->vhost_next;
   }

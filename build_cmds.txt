@@ -1,0 +1,12 @@
+rm -rf *; CFLAGS="-std=c99 -Wall -pipe -fomit-frame-pointer -D_GNU_SOURCE" cmake -DCMAKE_BUILD_TYPE=DEBUG -DLWS_WITH_LIBEVENT:BOOL=ON -DLWS_USE_LIBEVENT:BOOL=ON -DLWS_WITH_SHARED:BOOL=Off -DLWS_WITH_STATIC:BOOL=ON -DLWS_WITH_HTTP2=1 -DLWS_WITH_SSL=ON -DLWS_OPENSSL_INCLUDE_DIRS=$HOME/SmartThings/LEE/workspace/1/libwebsockets/openssl/include -DLWS_OPENSSL_LIBRARIES="$HOME/SmartThings/LEE/workspace/1/libwebsockets/openssl/lib/libssl.a;$HOME/SmartThings/LEE/workspace/1/libwebsockets/openssl/lib/libcrypto.a" -DLWS_LIBEVENT_INCLUDE_DIRS=$HOME/SmartThings/LEE/workspace/1/libwebsockets/libevent/include -DLWS_LIBEVENT_LIBRARIES=$HOME/SmartThings/LEE/workspace/1/libwebsockets/libevent/lib/libevent.a -DCMAKE_INSTALL_PREFIX=$HOME/SmartThings/LEE/workspace/1/libwebsockets/out ..
+
+rm -rf *; CFLAGS="-std=c99 -Wall -pipe -fomit-frame-pointer -D_GNU_SOURCE" LDFLAGS="-L/usr/lib/x86_64-linux-gnu/ -ldl" cmake -DCMAKE_BUILD_TYPE=DEBUG -DLWS_WITH_LIBEVENT:BOOL=ON -DLWS_USE_LIBEVENT:BOOL=ON -DLWS_WITH_SHARED:BOOL=Off -DLWS_WITH_STATIC:BOOL=ON -DLWS_WITH_HTTP2=1 -DLWS_WITH_SSL=ON -DLWS_OPENSSL_INCLUDE_DIRS=$HOME/SmartThings/LEE/workspace/1/libwebsockets/openssl/include -DLWS_OPENSSL_LIBRARIES="$HOME/SmartThings/LEE/workspace/1/libwebsockets/openssl/lib/libssl.a;$HOME/SmartThings/LEE/workspace/1/libwebsockets/openssl/lib/libcrypto.a" -DLWS_LIBEVENT_INCLUDE_DIRS=$HOME/SmartThings/LEE/workspace/1/libwebsockets/libevent/include -DLWS_LIBEVENT_LIBRARIES=$HOME/SmartThings/LEE/workspace/1/libwebsockets/libevent/lib/libevent.a -DCMAKE_INSTALL_PREFIX=$HOME/SmartThings/LEE/workspace/1/libwebsockets/out ..
+
+rm -rf *; cmake -DLWS_WITH_LIBEV:BOOL=ON -DLWS_LIBEV_INCLUDE_DIRS=$HOME/SmartThings/LEE/workspace/1/libwebsockets/libev/include -DLWS_LIBEV_LIBRARIES=$HOME/SmartThings/LEE/workspace/1/libwebsockets/libev/lib/libev.a -DCMAKE_INSTALL_PREFIX=$HOME/SmartThings/LEE/workspace/1/libwebsockets/out ..
+
+rm -rf ../out/*; make && make install
+
+# Running
+export LD_LIBRARY_PATH=/home/aditya/SmartThings/LEE/workspace/1/libwebsockets/libevent/lib:$LD_LIBRARY_PATH
+./out/bin/libwebsockets-test-server
+./out/bin/libwebsockets-test-client 127.0.0.1
